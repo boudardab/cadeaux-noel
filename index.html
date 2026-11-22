@@ -96,7 +96,7 @@ async function reload(){
     g.joined=true;g.members=members;g.me=members.find(m=>m.user_id===uid);
     const ids=members.map(m=>m.id);
     const [items,claims,grp]=await Promise.all([
-      ok(sb.from("items").select("id,member_id,title,link,note").in("member_id",ids).order("created_at")),
+      ok(sb.from("items").select("id,member_id,title,link,link2,note").in("member_id",ids).order("created_at")),
       ok(sb.from("claims").select("item_id,member_id")),
       ok(sb.from("groups").select("owner_id").eq("id",g.id).single())]);
     g.items=items;const iid=new Set(items.map(i=>i.id));g.claims=claims.filter(c=>iid.has(c.item_id));g.admin=grp.owner_id===uid;
@@ -113,7 +113,7 @@ function linkEl(l){if(!l)return null;let t=l;try{t=new URL(l).hostname.replace(/
 
 function row(it,m,showClaim,editable){
   const c=G.claims.find(x=>x.item_id===it.id);
-  return h("div",{class:"item"},h("b",{},it.title),linkEl(it.link),it.note?h("div",{class:"muted"},it.note):null,
+  return h("div",{class:"item"},h("b",{},it.title),linkEl(it.link),linkEl(it.link2),it.note?h("div",{class:"muted"},it.note):null,
     showClaim?(c?h("div",{},h("span",{class:"tag"},c.member_id===G.me.id?"✅ Tu le prends":"🎁 Pris par "+((mem(c.member_id)||{}).name||"quelqu’un")),
         c.member_id===G.me.id?h("button",{class:"small ghost",onclick:()=>change(()=>ok(sb.from("claims").delete().eq("item_id",it.id)))},"Annuler"):null)
       :h("button",{class:"small green",onclick:()=>change(()=>ok(sb.from("claims").insert({item_id:it.id,member_id:G.me.id})))},"Je le prends !")):null,
@@ -181,7 +181,8 @@ function renderAdd(app,v){
   if(!m||!canEdit(m))return go({t:"home"});
   const cur=v.id?G.items.find(x=>x.id===v.id):null;
   const title=h("input",{placeholder:"Une idée de cadeau (ex. : un pull bleu)","aria-label":"Idée de cadeau",required:"required",value:cur?cur.title:""});
-  const link=h("input",{placeholder:"Lien d’inspiration (facultatif)","aria-label":"Lien",inputmode:"url",value:cur?cur.link||"":""});
+  const link=h("input",{placeholder:"Lien d’inspiration 1 (facultatif)","aria-label":"Lien 1",inputmode:"url",value:cur?cur.link||"":""});
+const link2=h("input",{placeholder:"Lien d’inspiration 2 (facultatif)","aria-label":"Lien 2",inputmode:"url",value:cur?cur.link2||"":""});
   const note=h("input",{placeholder:"Précisions : taille, couleur… (facultatif)","aria-label":"Précisions",value:cur?cur.note||"":""});
   const save=h("button",{type:"submit",class:"green"},"💾 Enregistrer");
   app.replaceChildren(
@@ -190,11 +191,11 @@ function renderAdd(app,v){
     h("form",{class:"card",onsubmit:e=>{
       e.preventDefault();
       const t=title.value.trim();if(!t)return say("Écris ton idée de cadeau.");
-      let l=link.value.trim();if(l&&!/^https?:\/\//i.test(l))l="https://"+l;
-      const row={title:t,link:l||null,note:note.value.trim()||null};
+      const nl=v=>{v=v.trim();return v&&!/^https?:\/\//i.test(v)?"https://"+v:v};
+      const row={title:t,link:nl(link.value)||null,link2:nl(link2.value)||null,note:note.value.trim()||null};
       save.disabled=true;
       change(()=>ok(cur?sb.from("items").update(row).eq("id",cur.id):sb.from("items").insert({...row,member_id:m.id})),()=>go(v.back)).then(()=>{save.disabled=false});
-    }},title,link,note,save,h("button",{type:"button",class:"ghost",onclick:()=>go(v.back)},"Annuler"))
+    }},title,link,link2,note,save,h("button",{type:"button",class:"ghost",onclick:()=>go(v.back)},"Annuler"))
   );
   title.focus();
 }
