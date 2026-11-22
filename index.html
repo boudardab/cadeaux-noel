@@ -134,7 +134,7 @@ function render(){
   app.replaceChildren(
     h("button",{class:"link",onclick:home},"← Mes groupes"),
     h("h1",{},"🎄 "+G.name+" ",h("button",{class:"small ghost","aria-label":"Copier le lien d’invitation",title:"Copier le lien d’invitation",onclick:async()=>{try{await navigator.clipboard.writeText(invite);say("Lien d’invitation copié !")}catch(e){say(invite)}}},"🔗 Lien")),
-    h("section",{class:"card"},h("h2",{},"📝 Ma liste"),h("p",{class:"muted"},"Tu ne vois pas qui prend quoi : c’est la surprise !"),
+    h("section",{class:"card"},h("h2",{},"📝 Ma liste"),h("p",{class:"muted"},"Ajoute ou modifie tes envies de cadeaux"),
       mine.length?mine.map(it=>row(it,G.me,false,true)):h("p",{class:"muted"},"Ta liste est vide pour l’instant."),
       h("button",{class:"green",onclick:()=>go({t:"add",owner:G.me.id,back:{t:"home"}})},"➕ Ajouter une idée")),
     h("section",{class:"card"},h("h2",{},"🎁 Les listes du groupe"),
