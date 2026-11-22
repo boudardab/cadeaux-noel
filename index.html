@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#b3262e">
+<title>Cadeaux de Noël</title>
+<style>
+:root{--bg:#fbf6ee;--card:#fff;--text:#2b2420;--muted:#6f645b;--red:#b3262e;--green:#1f6f4a;--line:#e6dccd;--on:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1714;--card:#28221e;--text:#f3ece2;--muted:#b3a698;--red:#e0555c;--green:#4fb583;--line:#42392f;color-scheme:dark}}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:19px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:680px;margin:0 auto;padding:16px}
+h1{font-size:1.7rem;margin:.4em 0}h2{font-size:1.3rem;margin:.2em 0 .6em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+.muted{color:var(--muted)}
+input{width:100%;font:inherit;padding:12px 14px;margin:6px 0;border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text)}
+input:focus{outline:3px solid var(--green);border-color:var(--green)}
+button{font:inherit;font-weight:600;min-height:52px;padding:10px 20px;border:0;border-radius:12px;background:var(--red);color:var(--on);cursor:pointer;margin:6px 6px 6px 0}
+button:disabled{opacity:.6}
+button.green{background:var(--green)}button.ghost{background:transparent;color:var(--text);border:2px solid var(--line)}
+button.link{background:none;color:var(--green);padding:6px 0;min-height:44px}
+button.small{min-height:40px;padding:4px 12px;font-size:.9rem;vertical-align:middle}
+button.wide{display:block;width:100%;text-align:left}
+.item{border-top:1px solid var(--line);padding:12px 0}.item:first-of-type{border-top:0}
+.item b{font-size:1.1rem}.tag{display:inline-block;background:var(--green);color:var(--on);border-radius:20px;padding:4px 12px;font-size:.9rem;margin:4px 0}
+a{color:var(--green)}
+#msg{position:sticky;top:0;z-index:5;text-align:center;background:var(--red);color:var(--on);font-weight:600}
+#msg:not(:empty){padding:10px 12px}
+</style>
+</head>
+<body>
+<div id="msg" role="status"></div>
+<main id="app"><p class="muted">Chargement…</p></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script>
+/* === À REMPLIR : clé « anon / publishable » (Supabase > Project Settings > API). Jamais la clé service_role. === */
+const CFG={url:"https://ixdaujhraiixlmisoqby.supabase.co",key:"sb_publishable_BcHm8KR6cWXbe5A5T1xMug_cx1CGqiH"};
+
+const $=s=>document.querySelector(s);
+function h(t,a,...k){const e=document.createElement(t);for(const[n,v]of Object.entries(a||{})){if(n==="class")e.className=v;else if(n.startsWith("on"))e.addEventListener(n.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(n,v)}for(const c of k.flat())if(c!=null&&c!==false)e.append(c.nodeType?c:document.createTextNode(c));return e}
+let sb,uid,G=null,V={t:"home"},msgT;
+function say(t){const m=$("#msg");m.textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>m.textContent="",6000)}
+function fail(e){const m=(e&&e.message)||"";say(/fetch|network|load failed/i.test(m)?"Pas de connexion internet.":(m||"Oups, ça n’a pas marché."))}
+async function ok(p){const r=await p;if(r.error)throw r.error;return r.data}
+async function run(fn){try{await fn()}catch(e){fail(e)}}
+
+async function init(){
+  if(!window.supabase||CFG.key.startsWith("COLLE")){
+    $("#app").replaceChildren(h("div",{class:"card"},h("h2",{},"Configuration"),h("p",{},window.supabase?"Colle la clé « anon » de Supabase dans la ligne CFG du fichier index.html.":"Impossible de charger Supabase : vérifie la connexion internet.")));return}
+  sb=supabase.createClient(CFG.url,CFG.key);
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){
+    const r=await sb.auth.signInAnonymously();
+    if(r.error){$("#app").replaceChildren(h("div",{class:"card"},h("h2",{},"Connexion impossible"),h("p",{},r.error.message),h("p",{class:"muted"},"Dans Supabase, active « Anonymous sign-ins » (Authentication).")));return}
+    session=r.data.session;
+  }
+  uid=session.user.id;
+  setInterval(()=>{if(G&&V.t!=="add"&&!document.hidden&&document.activeElement.tagName!=="INPUT")reload().catch(()=>{})},20000);
+  addEventListener("hashchange",start);
+  start();
+}
+function start(){
+  const code=location.hash.slice(1).toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(code.length>=3)openGroup(code);else home();
+}
+async function home(){
+  G=null;
+  $("#app").replaceChildren(h("p",{class:"muted"},"Chargement…"));
+  let groups=[];try{groups=await ok(sb.from("groups").select("code,name").order("created_at"))}catch(e){fail(e)}
+  const gname=h("input",{placeholder:"Nom du groupe (ex. : Noël en famille)","aria-label":"Nom du groupe"});
+  const me=h("input",{placeholder:"Ton prénom","aria-label":"Ton prénom"});
+  $("#app").replaceChildren(
+    h("h1",{},"🎄 Cadeaux de Noël"),
+    groups.length?h("div",{class:"card"},h("h2",{},"Mes groupes"),groups.map(g=>h("button",{class:"green",onclick:()=>openGroup(g.code)},"🎁 "+g.name))):null,
+    h("div",{class:"card"},h("h2",{},"Créer un groupe"),h("p",{class:"muted"},"Tu en seras l’administrateur et tu pourras inviter les autres avec un lien."),gname,me,
+      h("button",{onclick:()=>{const n=gname.value.trim(),m=me.value.trim();if(!n||!m)return say("Écris le nom du groupe et ton prénom.");run(async()=>{openGroup(await ok(sb.rpc("create_group",{p_name:n,p_my_name:m})))})}},"Créer le groupe")),
+    h("p",{class:"muted"},"Tu as reçu un lien d’invitation ? Ouvre-le simplement.")
+  );
+}
+
+async function openGroup(code){
+  G={code,who:h("input",{placeholder:"Écris ton prénom","aria-label":"Ton prénom"}),pIn:h("input",{placeholder:"Prénom (ex. : Maman)","aria-label":"Prénom de la personne"}),pendingDel:null};
+  V={t:"home"};
+  $("#app").replaceChildren(h("p",{class:"muted"},"Chargement du groupe…"));
+  try{await reload()}catch(e){fail(e);G=null;home()}
+}
+async function reload(){
+  const g=G;if(!g)return;
+  const pv=await ok(sb.rpc("preview_group",{p_code:g.code}));
+  if(!pv.length){say("Ce lien ne correspond à aucun groupe.");G=null;return home()}
+  g.id=pv[0].group_id;g.name=pv[0].group_name;
+  const members=await ok(sb.from("members").select("id,name,user_id").eq("group_id",g.id).order("name"));
+  if(!members.length){g.joined=false;g.unclaimed=pv.filter(r=>r.member_id&&!r.claimed).map(r=>({id:r.member_id,name:r.member_name}))}
+  else{
+    g.joined=true;g.members=members;g.me=members.find(m=>m.user_id===uid);
+    const ids=members.map(m=>m.id);
+    const [items,claims,grp]=await Promise.all([
+      ok(sb.from("items").select("id,member_id,title,link,note").in("member_id",ids).order("created_at")),
+      ok(sb.from("claims").select("item_id,member_id")),
+      ok(sb.from("groups").select("owner_id").eq("id",g.id).single())]);
+    g.items=items;const iid=new Set(items.map(i=>i.id));g.claims=claims.filter(c=>iid.has(c.item_id));g.admin=grp.owner_id===uid;
+  }
+  if(G===g&&V.t!=="add")render();
+}
+function go(v){V=v;if(G)G.pendingDel=null;render();scrollTo(0,0)}
+async function change(fn,after){try{await fn();await reload();if(after)after()}catch(e){fail(e)}}
+
+const mem=id=>G.members.find(m=>m.id===id);
+const itemsOf=id=>G.items.filter(i=>i.member_id===id);
+const canEdit=m=>m.user_id===uid||(G.admin&&!m.user_id);
+function linkEl(l){if(!l)return null;let t=l;try{t=new URL(l).hostname.replace(/^www\./,"")}catch(e){}return h("div",{},"🔗 ",h("a",{href:l,target:"_blank",rel:"noopener noreferrer"},"Voir l’idée ("+t+")"))}
+
+function row(it,m,showClaim,editable){
+  const c=G.claims.find(x=>x.item_id===it.id);
+  return h("div",{class:"item"},h("b",{},it.title),linkEl(it.link),it.note?h("div",{class:"muted"},it.note):null,
+    showClaim?(c?h("div",{},h("span",{class:"tag"},c.member_id===G.me.id?"✅ Tu le prends":"🎁 Pris par "+((mem(c.member_id)||{}).name||"quelqu’un")),
+        c.member_id===G.me.id?h("button",{class:"small ghost",onclick:()=>change(()=>ok(sb.from("claims").delete().eq("item_id",it.id)))},"Annuler"):null)
+      :h("button",{class:"small green",onclick:()=>change(()=>ok(sb.from("claims").insert({item_id:it.id,member_id:G.me.id})))},"Je le prends !")):null,
+    editable?[h("button",{class:"small ghost",onclick:()=>go({t:"add",owner:m.id,id:it.id,back:V})},"✏️ Modifier"),
+      G.pendingDel===it.id
+        ?h("button",{class:"small",onclick:()=>{G.pendingDel=null;change(()=>ok(sb.from("items").delete().eq("id",it.id)))}},"Oui, supprimer")
+        :h("button",{class:"small ghost",onclick:()=>{G.pendingDel=it.id;render()}},"🗑️ Supprimer")]:null);
+}
+
+function render(){
+  if(!G||G.joined===undefined)return;
+  const app=$("#app");
+  if(!G.joined)return renderWho(app);
+  if(V.t==="add")return renderAdd(app,V);
+  if(V.t==="member")return renderMember(app,V);
+  const mine=itemsOf(G.me.id),others=G.members.filter(m=>m.id!==G.me.id);
+  const invite=location.href.split("#")[0]+"#"+G.code;
+  app.replaceChildren(
+    h("button",{class:"link",onclick:home},"← Mes groupes"),
+    h("h1",{},"🎄 "+G.name+" ",h("button",{class:"small ghost","aria-label":"Copier le lien d’invitation",title:"Copier le lien d’invitation",onclick:async()=>{try{await navigator.clipboard.writeText(invite);say("Lien d’invitation copié !")}catch(e){say(invite)}}},"🔗 Lien")),
+    h("section",{class:"card"},h("h2",{},"📝 Ma liste"),h("p",{class:"muted"},"Tu ne vois pas qui prend quoi : c’est la surprise !"),
+      mine.length?mine.map(it=>row(it,G.me,false,true)):h("p",{class:"muted"},"Ta liste est vide pour l’instant."),
+      h("button",{class:"green",onclick:()=>go({t:"add",owner:G.me.id,back:{t:"home"}})},"➕ Ajouter une idée")),
+    h("section",{class:"card"},h("h2",{},"🎁 Les listes du groupe"),
+      others.length?others.map(m=>{const n=itemsOf(m.id).length;return h("button",{class:"ghost wide",onclick:()=>go({t:"member",id:m.id})},m.name+" · "+(n?n+(n>1?" idées":" idée"):"aucune idée")+(G.admin&&!m.user_id?" · pas encore arrivé(e)":""))}):h("p",{class:"muted"},"Personne d’autre pour l’instant.")),
+    G.admin?h("section",{class:"card"},h("h2",{},"👥 Administration"),
+      h("p",{class:"muted"},"Ajoute le prénom de chaque personne, même si sa liste est vide. En arrivant, chacun choisira son prénom."),
+      G.pIn,h("button",{class:"green",onclick:()=>{const n=G.pIn.value.trim();if(!n)return say("Écris un prénom.");G.pIn.value="";change(()=>ok(sb.from("members").insert({group_id:G.id,name:n})),()=>say("Ajouté !"))}},"Ajouter cette personne")):null
+  );
+}
+
+function renderWho(app){
+  app.replaceChildren(
+    h("button",{class:"link",onclick:()=>{location.hash="";home()}},"← Mes groupes"),
+    h("h1",{},"🎄 "+G.name),
+    h("div",{class:"card"},h("h2",{},"Qui es-tu ?"),
+      G.unclaimed.map(m=>h("button",{class:"green wide",onclick:()=>change(()=>ok(sb.rpc("claim_member",{p_member_id:m.id})))},m.name)),
+      G.unclaimed.length?h("p",{class:"muted"},"Ton prénom n’est pas dans la liste ?"):null,
+      G.who,h("button",{onclick:()=>{const n=G.who.value.trim();if(!n)return say("Écris ton prénom.");change(()=>ok(sb.rpc("join_as_new",{p_code:G.code,p_name:n})))}},"C’est moi"))
+  );
+}
+
+function renderMember(app,v){
+  const m=mem(v.id);if(!m)return go({t:"home"});
+  const its=itemsOf(m.id),edit=G.admin&&!m.user_id;
+  app.replaceChildren(
+    h("button",{class:"link",onclick:()=>go({t:"home"})},"← Retour"),
+    h("h1",{},"🎁 Liste de "+m.name),
+    h("section",{class:"card"},
+      edit?h("p",{class:"muted"},"Cette personne n’est pas encore arrivée : tu peux recopier sa liste."):null,
+      its.length?its.map(it=>row(it,m,true,edit)):h("p",{class:"muted"},"Pas encore d’idées ici."),
+      edit?[h("button",{class:"green",onclick:()=>go({t:"add",owner:m.id,back:V})},"➕ Ajouter une idée"),
+        G.pendingDel==="m"+m.id
+          ?h("button",{onclick:()=>{G.pendingDel=null;change(()=>ok(sb.from("members").delete().eq("id",m.id)),()=>go({t:"home"}))}},"Oui, retirer cette personne")
+          :h("button",{class:"ghost",onclick:()=>{G.pendingDel="m"+m.id;render()}},"Retirer cette personne")]:null,
+      G.admin&&m.user_id&&m.user_id!==uid?[h("p",{class:"muted"},"Si cette personne a changé de téléphone, libère son prénom : elle pourra le choisir à nouveau."),
+        G.pendingDel==="r"+m.id
+          ?h("button",{onclick:()=>{G.pendingDel=null;change(()=>ok(sb.from("members").update({user_id:null}).eq("id",m.id)),()=>go({t:"home"}))}},"Oui, libérer ce prénom")
+          :h("button",{class:"ghost",onclick:()=>{G.pendingDel="r"+m.id;render()}},"Libérer ce prénom")]:null)
+  );
+}
+
+function renderAdd(app,v){
+  const m=mem(v.owner);
+  if(!m||!canEdit(m))return go({t:"home"});
+  const cur=v.id?G.items.find(x=>x.id===v.id):null;
+  const title=h("input",{placeholder:"Une idée de cadeau (ex. : un pull bleu)","aria-label":"Idée de cadeau",required:"required",value:cur?cur.title:""});
+  const link=h("input",{placeholder:"Lien d’inspiration (facultatif)","aria-label":"Lien",inputmode:"url",value:cur?cur.link||"":""});
+  const note=h("input",{placeholder:"Précisions : taille, couleur… (facultatif)","aria-label":"Précisions",value:cur?cur.note||"":""});
+  const save=h("button",{type:"submit",class:"green"},"💾 Enregistrer");
+  app.replaceChildren(
+    h("button",{class:"link",onclick:()=>go(v.back)},"← Retour"),
+    h("h1",{},(cur?"✏️ Modifier l’idée":"➕ Nouvelle idée")+(m.id===G.me.id?"":" pour "+m.name)),
+    h("form",{class:"card",onsubmit:e=>{
+      e.preventDefault();
+      const t=title.value.trim();if(!t)return say("Écris ton idée de cadeau.");
+      let l=link.value.trim();if(l&&!/^https?:\/\//i.test(l))l="https://"+l;
+      const row={title:t,link:l||null,note:note.value.trim()||null};
+      save.disabled=true;
+      change(()=>ok(cur?sb.from("items").update(row).eq("id",cur.id):sb.from("items").insert({...row,member_id:m.id})),()=>go(v.back)).then(()=>{save.disabled=false});
+    }},title,link,note,save,h("button",{type:"button",class:"ghost",onclick:()=>go(v.back)},"Annuler"))
+  );
+  title.focus();
+}
+init();
+</script>
+</body>
+</html>
