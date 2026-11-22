@@ -117,10 +117,10 @@ function row(it,m,showClaim,editable){
     showClaim?(c?h("div",{},h("span",{class:"tag"},c.member_id===G.me.id?"✅ Tu le prends":"🎁 Pris par "+((mem(c.member_id)||{}).name||"quelqu’un")),
         c.member_id===G.me.id?h("button",{class:"small ghost",onclick:()=>change(()=>ok(sb.from("claims").delete().eq("item_id",it.id)))},"Annuler"):null)
       :h("button",{class:"small green",onclick:()=>change(()=>ok(sb.from("claims").insert({item_id:it.id,member_id:G.me.id})))},"Je le prends !")):null,
-    editable?[h("button",{class:"small ghost",onclick:()=>go({t:"add",owner:m.id,id:it.id,back:V})},"✏️ Modifier"),
+    editable?[h("button",{class:"small ghost",onclick:()=>go({t:"add",owner:m.id,id:it.id,back:V})},"✏️"),
       G.pendingDel===it.id
         ?h("button",{class:"small",onclick:()=>{G.pendingDel=null;change(()=>ok(sb.from("items").delete().eq("id",it.id)))}},"Oui, supprimer")
-        :h("button",{class:"small ghost",onclick:()=>{G.pendingDel=it.id;render()}},"🗑️ Supprimer")]:null);
+        :h("button",{class:"small ghost",onclick:()=>{G.pendingDel=it.id;render()}},"🗑️")]:null);
 }
 
 function render(){
@@ -138,7 +138,7 @@ function render(){
       mine.length?mine.map(it=>row(it,G.me,false,true)):h("p",{class:"muted"},"Ta liste est vide pour l’instant."),
       h("button",{class:"green",onclick:()=>go({t:"add",owner:G.me.id,back:{t:"home"}})},"➕ Ajouter une idée")),
     h("section",{class:"card"},h("h2",{},"🎁 Les listes du groupe"),
-      others.length?others.map(m=>{const n=itemsOf(m.id).length;return h("button",{class:"ghost wide",onclick:()=>go({t:"member",id:m.id})},m.name+" · "+(n?n+(n>1?" idées":" idée"):"aucune idée")+(G.admin&&!m.user_id?" · pas encore arrivé(e)":""))}):h("p",{class:"muted"},"Personne d’autre pour l’instant.")),
+      others.length?others.map(m=>{const n=itemsOf(m.id).length;return h("button",{class:"ghost wide",onclick:()=>go({t:"member",id:m.id})},h("b",{},m.name),h("span",{style:"font-weight:400"}," · "+(n?n+(n>1?" idées":" idée"):"aucune idée")+(G.admin&&!m.user_id?" · pas encore arrivé(e)":"")))}):h("p",{class:"muted"},"Personne d’autre pour l’instant.")),
     G.admin?h("section",{class:"card"},h("h2",{},"👥 Administration"),
       h("p",{class:"muted"},"Ajoute le prénom de chaque personne, même si sa liste est vide. En arrivant, chacun choisira son prénom."),
       G.pIn,h("button",{class:"green",onclick:()=>{const n=G.pIn.value.trim();if(!n)return say("Écris un prénom.");G.pIn.value="";change(()=>ok(sb.from("members").insert({group_id:G.id,name:n})),()=>say("Ajouté !"))}},"Ajouter cette personne")):null
