@@ -114,7 +114,7 @@ function linkEl(l){if(!l)return null;let t=l;try{t=new URL(l).hostname.replace(/
 function row(it,m,showClaim,editable){
   const c=G.claims.find(x=>x.item_id===it.id);
   return h("div",{class:"item"},h("b",{},it.title),linkEl(it.link),linkEl(it.link2),it.note?h("div",{class:"muted"},it.note):null,
-    showClaim?(c?h("div",{},h("span",{class:"tag"},c.member_id===G.me.id?"✅ Tu le prends":"🎁 Déjà pris",
+    showClaim?(c?h("div",{},h("span",{class:"tag"},c.member_id===G.me.id?"✅ Tu le prends":"🎁 Déjà pris"),
         c.member_id===G.me.id?h("button",{class:"small ghost",onclick:()=>change(()=>ok(sb.from("claims").delete().eq("item_id",it.id)))},"Annuler"):null)
       :h("button",{class:"small green",onclick:()=>change(()=>ok(sb.from("claims").insert({item_id:it.id,member_id:G.me.id})))},"Je le prends !")):null,
     editable?[h("button",{class:"small ghost",onclick:()=>go({t:"add",owner:m.id,id:it.id,back:V})},"✏️"),
